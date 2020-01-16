@@ -11,7 +11,7 @@ This codebase has not been professionally audited and is not intended for use in
 ## Installation
 
 ```shell script
-go get -v -u github.com/zhcppy/go-walletconnect-bridge
+go get -v github.com/zhcppy/go-walletconnect-bridge
 ```
 
 or 

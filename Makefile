@@ -1,19 +1,19 @@
 #!/usr/bin/make -f
 
-GOPROXY=GO111MODULE=on GOPROXY=https://goproxy.io
+PROXY=GOPROXY=https://goproxy.io
 
 .PHONY: build-linux
-build-linux: go.sum
+build-linux: go.mod
 	LEDGER_ENABLED=false GOOS=linux GOARCH=amd64 go build -mod=readonly -o go-walletconnect-bridge-linux .
 
-.PHONY: go.sum
-go.sum: go.mod
-	@$(GOPROXY) go mod tidy
-	@$(GOPROXY) go mod verify
-	@$(GOPROXY) go mod download
+.PHONY: go.mod
+go.mod:
+	@$(PROXY) go mod tidy
+	@$(PROXY) go mod verify
+	@$(PROXY) go mod download
 
 .PHONY: install
-install: go.sum
+install: go.mod
 	@go install -v -mod=readonly .
 
 .PHONY: format

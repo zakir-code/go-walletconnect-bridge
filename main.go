@@ -1,14 +1,23 @@
 package main
 
 import (
-	"fmt"
+	"flag"
+	"github.com/op/go-logging"
 
 	"github.com/gin-gonic/gin"
-	"github.com/op/go-logging"
 )
 
 func main() {
-	logging.SetBackend(BackendFormatter)
+	addr := flag.String("addr", "0.0.0.0:7000", "Server listening addr")
+	level := flag.String("level", "INFO", "Server log level")
+	flag.Parse()
+	logLevel, err := logging.LogLevel(*level)
+	if err != nil {
+		panic(err.Error())
+	}
+	leveledBackend.SetLevel(logLevel, log.Module)
+	log.SetBackend(leveledBackend)
+
 	gin.Logger()
 	gin.ForceConsoleColor()
 	router := gin.Default()
@@ -18,5 +27,5 @@ func main() {
 		router.POST("/subscribe", SubscribeHandler)
 		router.GET("", WebSocketHandler)
 	}
-	fmt.Println(router.Run(":7000"))
+	panic(router.Run(*addr))
 }
