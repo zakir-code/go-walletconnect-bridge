@@ -39,7 +39,7 @@ type peer struct {
 	subs map[topic]struct{}
 }
 
-var wsPool = &WsPool{Peers: map[net.Conn]peer{}}
+var wsPool = &WsPool{Peers: make(map[net.Conn]peer)}
 
 func (w *WsPool) SetSub(c net.Conn, t topic) {
 	w.Lock()
@@ -51,7 +51,7 @@ func (w *WsPool) SetSub(c net.Conn, t topic) {
 	}
 }
 
-func (w *WsPool) getSub(t topic) net.Conn {
+func (w *WsPool) GetSub(t topic) net.Conn {
 	w.Lock()
 	defer w.Unlock()
 	for c, p := range w.Peers {
@@ -62,10 +62,13 @@ func (w *WsPool) getSub(t topic) net.Conn {
 	return nil
 }
 
-func (w *WsPool) removePeer(c net.Conn) {
+func (w *WsPool) RemovePeer(c net.Conn) {
 	w.Lock()
 	defer w.Unlock()
-	delete(w.Peers, c)
+	_, ok := w.Peers[c]
+	if ok {
+		delete(w.Peers, c)
+	}
 	if err := c.Close(); err != nil {
 		log.Errorf("conn close error: %s", err.Error())
 	}
@@ -81,7 +84,7 @@ func (w *WsPool) SetPub(c net.Conn, msg WsMsg) {
 	}
 }
 
-func (w *WsPool) getPub(t topic) *WsMsg {
+func (w *WsPool) GetPub(t topic) *WsMsg {
 	w.Lock()
 	defer w.Unlock()
 	for _, p := range w.Peers {
@@ -96,7 +99,7 @@ func (w *WsPool) getPub(t topic) *WsMsg {
 func SubscribeController(conn net.Conn, t topic) {
 	wsPool.SetSub(conn, t)
 
-	pubMsg := wsPool.getPub(t)
+	pubMsg := wsPool.GetPub(t)
 	if pubMsg == nil {
 		return
 	}
@@ -109,7 +112,7 @@ func SubscribeController(conn net.Conn, t topic) {
 }
 
 func PublishController(conn net.Conn, msg WsMsg) {
-	if c := wsPool.getSub(msg.Topic); c != nil {
+	if c := wsPool.GetSub(msg.Topic); c != nil {
 		if err := wsutil.WriteServerText(c, msg.Marshal()); err != nil {
 			log.Error("publish controller write err", err.Error())
 		} else {
@@ -128,7 +131,7 @@ func WebSocketHandler(ctx *gin.Context) {
 	}
 
 	go func() {
-		defer wsPool.removePeer(conn)
+		defer wsPool.RemovePeer(conn)
 		for {
 			msgBt, err := wsutil.ReadClientText(conn)
 			if err != nil {

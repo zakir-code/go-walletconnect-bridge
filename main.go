@@ -2,9 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/op/go-logging"
-
 	"github.com/gin-gonic/gin"
+	"github.com/op/go-logging"
 )
 
 func main() {

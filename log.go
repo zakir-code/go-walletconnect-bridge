@@ -19,6 +19,6 @@ var _backend = logging.NewLogBackend(os.Stdout, "", 0)
 // For messages written to backend2 we want to add some additional
 // information to the output, including the used log level and the name of
 // the function.
-var backendFormatter = logging.NewBackendFormatter(_backend, _format)
+var _backendFormatter = logging.NewBackendFormatter(_backend, _format)
 
-var leveledBackend = logging.SetBackend(backendFormatter)
+var leveledBackend = logging.SetBackend(_backendFormatter)
