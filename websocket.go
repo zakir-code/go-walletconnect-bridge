@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"sync"
@@ -28,6 +29,10 @@ type WsMsg struct {
 func (msg *WsMsg) Marshal() []byte {
 	bytes, _ := json.Marshal(msg)
 	return bytes
+}
+
+func (msg *WsMsg) String() string {
+	return fmt.Sprintf("topic: %s, type: %s, silent: %v", msg.Topic, msg.Type, msg.Silent)
 }
 
 type WsPool struct {
@@ -68,10 +73,11 @@ func (w *WsPool) RemovePeer(c net.Conn) {
 	defer w.Unlock()
 	_, ok := w.Peers[c]
 	if ok {
+		log.Info("find peer: ", c.RemoteAddr())
 		delete(w.Peers, c)
 	}
 	if err := c.Close(); err != nil {
-		log.Errorf("conn close error: %s", err.Error())
+		log.Errorf("close conn error: %s", err.Error())
 	}
 }
 
@@ -108,7 +114,7 @@ func SubscribeController(conn net.Conn, t topic) {
 	if err := wsutil.WriteServerText(conn, pubMsg.Marshal()); err != nil {
 		log.Error("subscribe controller write err", err.Error())
 	} else {
-		log.Info("outgoing msg1", conn.RemoteAddr(), string(pubMsg.Marshal()))
+		log.Info("outgoing msg1", conn.RemoteAddr(), pubMsg.String())
 	}
 }
 
@@ -117,7 +123,7 @@ func PublishController(conn net.Conn, msg WsMsg) {
 		if err := wsutil.WriteServerText(c, msg.Marshal()); err != nil {
 			log.Error("publish controller write err", err.Error())
 		} else {
-			log.Info("outgoing msg2", c.RemoteAddr(), string(msg.Marshal()))
+			log.Info("outgoing msg2", c.RemoteAddr(), msg.String())
 		}
 	} else {
 		wsPool.SetPub(conn, msg)
@@ -134,6 +140,7 @@ func WebSocketHandler(ctx *gin.Context) {
 		log.Errorf("web socket connect err: %s", err.Error())
 		return
 	}
+	log.Info("success to peer connection:", conn.RemoteAddr())
 
 	go func() {
 		defer wsPool.RemovePeer(conn)
@@ -148,7 +155,7 @@ func WebSocketHandler(ctx *gin.Context) {
 				log.Errorf("web socket unmarshal msg err: %s", err.Error())
 				break
 			}
-			log.Info("incoming", conn.RemoteAddr(), string(msg.Marshal()))
+			log.Info("incoming", conn.RemoteAddr(), msg.String())
 			switch msg.Type {
 			case WsSubEvent:
 				SubscribeController(conn, msg.Topic)
