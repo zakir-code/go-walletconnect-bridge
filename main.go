@@ -1,14 +1,25 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
+	"time"
 )
 
 func main() {
 	addr := flag.String("addr", "0.0.0.0:7000", "Server listening addr")
 	level := flag.String("level", "INFO", "Server log level")
+	isHttps := flag.Bool("https", false, "Start the HTTPS")
+	certFile := flag.String("cert", "cert.pem", "TLS cert file")
+	keyFile := flag.String("key", "key.pem", "TLS key file")
 	flag.Parse()
 	logLevel, err := logging.LogLevel(*level)
 	if err != nil {
@@ -24,7 +35,50 @@ func main() {
 		router.GET("/hello", HelloHandler)
 		router.GET("/info", InfoHandler)
 		router.POST("/subscribe", SubscribeHandler)
-		router.GET("", WebSocketHandler)
+		router.GET("/", WebSocketHandler)
 	}
-	panic(router.Run(*addr))
+	srv := &http.Server{Addr: *addr, Handler: router}
+	go func() {
+		var err error
+		if *isHttps {
+			log.Info("Server Listen On:", "https://"+srv.Addr)
+			err = srv.ListenAndServeTLS(GetFileName(*certFile), GetFileName(*keyFile))
+		} else {
+			log.Info("Server Listen On:", "http://"+srv.Addr)
+			err = srv.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 5 seconds.
+	quit := make(chan os.Signal)
+	// kill (no param) default send syscall.SIGTERM
+	// kill -2 is syscall.SIGINT
+	// kill -9 is syscall.SIGKILL but can't be catch, so don't need add it
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Info("Shutdown Server ...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal("Server Shutdown:", err)
+	}
+
+	<-ctx.Done()
+	log.Info("Timeout of 5 seconds, Server exiting.")
+}
+
+func GetFileName(name string) string {
+	if _, err := os.Stat(name); err == nil {
+		return name
+	}
+	name = filepath.Join(os.Getenv("GOPATH"),
+		"/src/github.com/zhcppy/go-walletconnect-bridge", name)
+	if _, err := os.Stat(name); err == nil {
+		return name
+	}
+	panic("No found file: " + name)
 }

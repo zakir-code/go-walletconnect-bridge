@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net"
+	"net/http"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -124,6 +125,10 @@ func PublishController(conn net.Conn, msg WsMsg) {
 }
 
 func WebSocketHandler(ctx *gin.Context) {
+	if !ctx.IsWebsocket() {
+		ctx.String(http.StatusBadRequest, "This is a the websocket API")
+		return
+	}
 	conn, _, _, err := ws.UpgradeHTTP(ctx.Request, ctx.Writer)
 	if err != nil {
 		log.Errorf("web socket connect err: %s", err.Error())

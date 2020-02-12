@@ -11,7 +11,7 @@ var log = logging.MustGetLogger("go-walletconnect-bridge")
 // Example format string. Everything except the message has a custom color
 // which is dependent on the log level. Many fields have a custom output
 // formatting too, eg. the time returns the hour down to the milli second.
-var _format = logging.MustStringFormatter(`%{color}%{time:2006-01-02 15:04:05.000} ▶ %{level:.4s} %{id:03d}%{color:reset} %{message}`)
+var _format = logging.MustStringFormatter(`%{color}%{time:2006-01-02 15:04:05} ▶ %{level:.4s} %{id:03d}%{color:reset} %{message}`)
 
 // For demo purposes, create two backend for os.Stdout.
 var _backend = logging.NewLogBackend(os.Stdout, "", 0)

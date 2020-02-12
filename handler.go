@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +13,7 @@ const (
 )
 
 func HelloHandler(ctx *gin.Context) {
-	ctx.String(http.StatusOK, fmt.Sprintf("Hello World, this is Go implement WalletConnect %s", version))
+	ctx.String(http.StatusOK, "Hello! this is Go implement WalletConnect %s.", version)
 }
 
 func InfoHandler(ctx *gin.Context) {

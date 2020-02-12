@@ -20,3 +20,9 @@ or
 git clone https://github.com/zhcppy/go-walletconnect-bridge
 make install 
 ```
+
+## Run
+
+```shell script
+go-walletconnect-bridge -addr 0.0.0.0:7000 -https
+```

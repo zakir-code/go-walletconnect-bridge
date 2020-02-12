@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-PROXY=GOPROXY=https://goproxy.io
+export GOPROXY=https://goproxy.io
 
 .PHONY: build-linux
 build-linux: go.mod
@@ -8,9 +8,7 @@ build-linux: go.mod
 
 .PHONY: go.mod
 go.mod:
-	@$(PROXY) go mod tidy
-	@$(PROXY) go mod verify
-	@$(PROXY) go mod download
+	@go mod tidy && go mod verify && go mod download
 
 .PHONY: install
 install: go.mod
