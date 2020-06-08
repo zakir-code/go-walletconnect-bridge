@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 )
 
 func main() {
@@ -60,14 +59,10 @@ func main() {
 	<-quit
 	log.Info("Shutdown Server ...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(context.Background()); err != nil {
 		log.Fatal("Server Shutdown:", err)
 	}
-
-	<-ctx.Done()
-	log.Info("Timeout of 5 seconds, Server exiting.")
+	log.Info("Server exiting.")
 }
 
 func GetFileName(name string) string {

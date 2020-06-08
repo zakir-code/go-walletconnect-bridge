@@ -1,23 +1,25 @@
 #!/usr/bin/make -f
 
-export GOPROXY=https://goproxy.io
+export GOPROXY=https://goproxy.io,direct
+export GO111MODULE=on
 
-.PHONY: build-linux
-build-linux: go.mod
-	LEDGER_ENABLED=false GOOS=linux GOARCH=amd64 go build -mod=readonly -o go-walletconnect-bridge-linux .
+.PHONY: build-linux go.mod install docker format test
 
-.PHONY: go.mod
+build-linux:
+	LEDGER_ENABLED=false CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o go-walletconnect-bridge-linux .
+
 go.mod:
 	@go mod tidy && go mod verify && go mod download
 
-.PHONY: install
-install: go.mod
-	@go install -v -mod=readonly .
+install:
+	@go install -v .
 
-.PHONY: format
+docker: build-linux
+	@docker rmi -f zhcppy/go-wallet-bridge:latest
+	@docker build --no-cache -f Dockerfile -t zhcppy/go-wallet-bridge:latest .
+
 format:
 	@find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" | xargs gofmt -w -s
 
-.PHONY: test
 test:
-	@VERSION=$(VERSION) go test -short -cover -mod=readonly -tags='ledger test_ledger_mock'
+	@go test -short -cover
