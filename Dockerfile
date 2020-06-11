@@ -7,6 +7,6 @@ WORKDIR root
 
 COPY go-walletconnect-bridge-linux /usr/local/bin/wallet-bridge
 
-EXPOSE 7000/tcp 7000/udp
+EXPOSE 7000/tcp
 
 ENTRYPOINT ["wallet-bridge"]
