@@ -5,8 +5,8 @@ ARG OS="linux"
 
 WORKDIR root
 
-COPY go-walletconnect-bridge-linux /usr/local/bin/wallet-bridge
+COPY go-walletconnect-bridge-linux /usr/local/bin/walletconnect-bridge
 
 EXPOSE 7000/tcp
 
-ENTRYPOINT ["wallet-bridge"]
+ENTRYPOINT ["walletconnect-bridge"]

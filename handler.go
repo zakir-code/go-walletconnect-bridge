@@ -12,6 +12,10 @@ const (
 	repository = "https://github.com/zhcppy/go-walletconnect-bridge"
 )
 
+func HealthHandler(ctx *gin.Context)  {
+	ctx.Status(http.StatusNoContent)
+}
+
 func HelloHandler(ctx *gin.Context) {
 	ctx.String(http.StatusOK, "Hello! this is Go implement WalletConnect %s.", version)
 }
@@ -22,17 +26,4 @@ func InfoHandler(ctx *gin.Context) {
 		"version":    version,
 		"repository": repository,
 	})
-}
-
-func SubscribeHandler(ctx *gin.Context) {
-	var body struct {
-		Topic   string `json:"topic"`
-		Webhook string `json:"webhook"`
-	}
-	if err := ctx.ShouldBind(body); err != nil || body.Topic == "" || body.Webhook == "" {
-		ctx.JSON(http.StatusOK, map[string]string{
-			"message": "missing or invalid [topic webhook] field",
-		})
-	}
-	ctx.JSON(http.StatusOK, map[string]bool{"message": true})
 }

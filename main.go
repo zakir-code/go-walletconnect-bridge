@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/gin-gonic/gin"
-	"github.com/op/go-logging"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
+
+	"github.com/gin-gonic/gin"
+	"github.com/op/go-logging"
 )
 
 func main() {
@@ -19,7 +21,8 @@ func main() {
 	certFile := flag.String("cert", "cert.pem", "TLS cert file")
 	keyFile := flag.String("key", "key.pem", "TLS key file")
 	flag.Parse()
-	logLevel, err := logging.LogLevel(*level)
+
+	logLevel, err := logging.LogLevel(strings.ToUpper(*level))
 	if err != nil {
 		panic(err.Error())
 	}
@@ -30,10 +33,11 @@ func main() {
 	gin.ForceConsoleColor()
 	router := gin.Default()
 	{
+		router.GET("/health", HealthHandler)
 		router.GET("/hello", HelloHandler)
 		router.GET("/info", InfoHandler)
-		router.POST("/subscribe", SubscribeHandler)
 		router.GET("/", WebSocketHandler)
+		router.POST("/subscribe", SubscribeHandler)
 	}
 	srv := &http.Server{Addr: *addr, Handler: router}
 	go func() {
@@ -60,9 +64,10 @@ func main() {
 	log.Info("Shutdown Server ...")
 
 	if err := srv.Shutdown(context.Background()); err != nil {
-		log.Fatal("Server Shutdown:", err)
+		log.Fatalf("Server shutdown error: %s\n", err)
+	} else {
+		log.Info("Server exiting.")
 	}
-	log.Info("Server exiting.")
 }
 
 func GetFileName(name string) string {

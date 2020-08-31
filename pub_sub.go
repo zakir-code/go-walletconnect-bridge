@@ -17,10 +17,8 @@ const (
 	WsPubEvent = "pub"
 )
 
-type topic string
-
 type WsMsg struct {
-	Topic   topic  `json:"topic"`
+	Topic   string  `json:"topic"`
 	Type    string `json:"type"`
 	Payload string `json:"payload"`
 	Silent  bool   `json:"silent"`
@@ -41,27 +39,27 @@ type WsPool struct {
 }
 
 type peer struct {
-	pubs map[topic]WsMsg
-	subs map[topic]struct{}
+	pubs map[string]WsMsg
+	subs map[string]struct{}
 }
 
 var wsPool = &WsPool{Peers: make(map[net.Conn]peer)}
 
-func (w *WsPool) SetSub(c net.Conn, t topic) {
+func (w *WsPool) SetSub(c net.Conn, topic string) {
 	w.Lock()
 	defer w.Unlock()
 	if p, ok := w.Peers[c]; ok {
-		p.subs[t] = struct{}{}
+		p.subs[topic] = struct{}{}
 	} else {
-		w.Peers[c] = peer{subs: map[topic]struct{}{t: {}}, pubs: map[topic]WsMsg{}}
+		w.Peers[c] = peer{subs: map[string]struct{}{topic: {}}, pubs: map[string]WsMsg{}}
 	}
 }
 
-func (w *WsPool) GetSub(t topic) net.Conn {
+func (w *WsPool) GetSub(topic string) net.Conn {
 	w.Lock()
 	defer w.Unlock()
 	for c, p := range w.Peers {
-		if _, ok := p.subs[t]; ok {
+		if _, ok := p.subs[topic]; ok {
 			return c
 		}
 	}
@@ -73,7 +71,7 @@ func (w *WsPool) RemovePeer(c net.Conn) {
 	defer w.Unlock()
 	_, ok := w.Peers[c]
 	if ok {
-		log.Info("find peer: ", c.RemoteAddr())
+		log.Info("find peer and delete: ", c.RemoteAddr())
 		delete(w.Peers, c)
 	}
 	if err := c.Close(); err != nil {
@@ -87,26 +85,26 @@ func (w *WsPool) SetPub(c net.Conn, msg WsMsg) {
 	if p, ok := w.Peers[c]; ok {
 		p.pubs[msg.Topic] = msg
 	} else {
-		w.Peers[c] = peer{pubs: map[topic]WsMsg{msg.Topic: msg}, subs: map[topic]struct{}{}}
+		w.Peers[c] = peer{pubs: map[string]WsMsg{msg.Topic: msg}, subs: map[string]struct{}{}}
 	}
 }
 
-func (w *WsPool) GetPub(t topic) *WsMsg {
+func (w *WsPool) GetPub(topic string) *WsMsg {
 	w.Lock()
 	defer w.Unlock()
 	for _, p := range w.Peers {
-		if msg, ok := p.pubs[t]; ok {
-			delete(p.pubs, t)
+		if msg, ok := p.pubs[topic]; ok {
+			delete(p.pubs, topic)
 			return &msg
 		}
 	}
 	return nil
 }
 
-func SubscribeController(conn net.Conn, t topic) {
-	wsPool.SetSub(conn, t)
+func subscribeController(conn net.Conn, topic string) {
+	wsPool.SetSub(conn, topic)
 
-	pubMsg := wsPool.GetPub(t)
+	pubMsg := wsPool.GetPub(topic)
 	if pubMsg == nil {
 		return
 	}
@@ -114,16 +112,19 @@ func SubscribeController(conn net.Conn, t topic) {
 	if err := wsutil.WriteServerText(conn, pubMsg.Marshal()); err != nil {
 		log.Error("subscribe controller write err", err.Error())
 	} else {
-		log.Info("outgoing msg1", conn.RemoteAddr(), pubMsg.String())
+		log.Info("outgoing self", conn.RemoteAddr(), pubMsg.String())
 	}
 }
 
-func PublishController(conn net.Conn, msg WsMsg) {
+func publishController(conn net.Conn, msg WsMsg) {
+	if !msg.Silent {
+		PushNotification(msg.Topic)
+	}
 	if c := wsPool.GetSub(msg.Topic); c != nil {
 		if err := wsutil.WriteServerText(c, msg.Marshal()); err != nil {
 			log.Error("publish controller write err", err.Error())
 		} else {
-			log.Info("outgoing msg2", c.RemoteAddr(), msg.String())
+			log.Info("outgoing side", c.RemoteAddr(), msg.String())
 		}
 	} else {
 		wsPool.SetPub(conn, msg)
@@ -158,9 +159,9 @@ func WebSocketHandler(ctx *gin.Context) {
 			log.Info("incoming", conn.RemoteAddr(), msg.String())
 			switch msg.Type {
 			case WsSubEvent:
-				SubscribeController(conn, msg.Topic)
+				subscribeController(conn, msg.Topic)
 			case WsPubEvent:
-				PublishController(conn, msg)
+				publishController(conn, msg)
 			default:
 				log.Warning("web socket msg type is not exist!", msg.Type)
 			}
